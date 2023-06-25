@@ -22,8 +22,8 @@ int getNumaOfPage(const void* addr) {
   long ret = move_pages(0, 1, pages, NULL, &status, 0);
   if (ret == 0) {
     numaNodeDictionaryCount[status]++;
-    std::cout << "index " << std::to_string(status) << std::to_string(numaNodeDictionaryCount[status]);
-    std::cout << status << std::endl;
+    std::cout << "node " << std::to_string(status) << "" << std::to_string(numaNodeDictionaryCount[status]);
+    std::cout << status << std::endl << std::flush;
     return status;
   } else {
     std::cout << "move_pages returned error!" << std::endl;
@@ -44,9 +44,9 @@ DictionarySegment<T>::DictionarySegment(const std::shared_ptr<const pmr_vector<T
   auto node = getNumaOfPage(_attribute_vector.get());
   if (node == getNumaOfPage(_decompressor.get()) && node == getNumaOfPage(_dictionary.get()) &&
       node == getNumaOfPage(this)) {
-    std::cout << "dictionary and its attributes on same Node" << std::endl;
+    std::cout << "dictionary and its attributes on same Node" << std::endl << std::flush;
   } else {
-    std::cout << "dictionary and its attributes on different Node" << std::endl;
+    std::cout << "dictionary and its attributes on different Node" << std::endl << std::flush;
   }
 
   Assert(_dictionary->size() < std::numeric_limits<ValueID::base_type>::max(), "Input segment too big");
