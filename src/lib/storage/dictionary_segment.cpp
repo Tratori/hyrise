@@ -22,7 +22,7 @@ int getNumaOfPage(const void* addr) {
   long ret = move_pages(0, 1, pages, NULL, &status, 0);
   if (ret == 0) {
     numaNodeDictionaryCount[status]++;
-    std::cout << "node " << std::to_string(status) << "" << std::to_string(numaNodeDictionaryCount[status]);
+    std::cout << "node " << std::to_string(status) << " " << std::to_string(numaNodeDictionaryCount[status]);
     std::cout << status << std::endl << std::flush;
     return status;
   } else {
