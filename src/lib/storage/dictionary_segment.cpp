@@ -11,13 +11,18 @@
 #include "utils/size_estimation_utils.hpp"
 
 namespace hyrise {
-int getNumaOfPage(void* addr) {
+
+auto numaNodeDictionaryCount = std::vector<long>(16, 0);
+
+int getNumaOfPage(const void* addr) {
   unsigned long page = (unsigned long)addr;
   page = page & (~(4096 - 1));
   void* pages[1] = {(void*)page};
   int status;
   long ret = move_pages(0, 1, pages, NULL, &status, 0);
   if (ret == 0) {
+    numaNodeDictionaryCount[status]++;
+    std::cout << "index " << std::to_string(status) << std::to_string(numaNodeDictionaryCount[status]);
     std::cout << status << std::endl;
     return status;
   } else {
@@ -36,7 +41,14 @@ DictionarySegment<T>::DictionarySegment(const std::shared_ptr<const pmr_vector<T
   // NULL is represented by _dictionary.size(). INVALID_VALUE_ID, which is the highest possible number in
   // ValueID::base_type (2^32 - 1), is needed to represent "value not found" in calls to lower_bound/upper_bound.
   // For a DictionarySegment of the max size Chunk::MAX_SIZE, those two values overlap.
-  getNumaOfPage(&_decompressor);
+  auto node = getNumaOfPage(_attribute_vector.get());
+  if (node == getNumaOfPage(_decompressor.get()) && node == getNumaOfPage(_dictionary.get()) &&
+      node == getNumaOfPage(this)) {
+    std::cout << "dictionary and its attributes on same Node" << std::endl;
+  } else {
+    std::cout << "dictionary and its attributes on different Node" << std::endl;
+  }
+
   Assert(_dictionary->size() < std::numeric_limits<ValueID::base_type>::max(), "Input segment too big");
 }
 
