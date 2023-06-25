@@ -16,7 +16,7 @@ auto numaNodeDictionaryCount = std::vector<long>(8, 0);
 
 void printAllocations() {
   for (auto node_index = 0ul; node_index < numaNodeDictionaryCount.size(); node_index++) {
-    std::cout << "Node " << node_index << numaNodeDictionaryCount[node_index] << std::endl;
+    std::cout << "Node " << node_index << " " << numaNodeDictionaryCount[node_index] / 4 << std::endl;
   }
 }
 
@@ -46,12 +46,14 @@ DictionarySegment<T>::DictionarySegment(const std::shared_ptr<const pmr_vector<T
   // NULL is represented by _dictionary.size(). INVALID_VALUE_ID, which is the highest possible number in
   // ValueID::base_type (2^32 - 1), is needed to represent "value not found" in calls to lower_bound/upper_bound.
   // For a DictionarySegment of the max size Chunk::MAX_SIZE, those two values overlap.
-  auto node = getNumaOfPage(_attribute_vector.get());
-  if (node == getNumaOfPage(_decompressor.get()) && node == getNumaOfPage(_dictionary.get()) &&
-      node == getNumaOfPage(this)) {
-    std::cout << "dictionary and its attributes on same Node" << std::endl << std::flush;
+  auto node_attr = getNumaOfPage(_attribute_vector.get());
+  auto node_decomp = getNumaOfPage(_decompressor.get());
+  auto node_dict = getNumaOfPage(_dictionary.get());
+  auto node_this = getNumaOfPage(this);
+  if (node_decomp == node_attr && node_dict == node_this && node_attr == node_dict) {
+    std::cout << "Dictionary and its attributes on same Node" << std::endl << std::flush;
   } else {
-    std::cout << "dictionary and its attributes on different Node" << std::endl << std::flush;
+    std::cout << "Dictionary and its attributes on different Node" << std::endl << std::flush;
   }
   printAllocations();
 
