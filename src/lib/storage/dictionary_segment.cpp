@@ -12,7 +12,13 @@
 
 namespace hyrise {
 
-auto numaNodeDictionaryCount = std::vector<long>(16, 0);
+auto numaNodeDictionaryCount = std::vector<long>(8, 0);
+
+void printAllocations() {
+  for (auto node_index = 0ul; node_index < numaNodeDictionaryCount.size(); node_index++) {
+    std::cout << "Node " << node_index << numaNodeDictionaryCount[node_index] << std::endl;
+  }
+}
 
 int getNumaOfPage(const void* addr) {
   unsigned long page = (unsigned long)addr;
@@ -22,7 +28,6 @@ int getNumaOfPage(const void* addr) {
   long ret = move_pages(0, 1, pages, NULL, &status, 0);
   if (ret == 0) {
     numaNodeDictionaryCount[status]++;
-    std::cout << "node " << std::to_string(status) << " " << std::to_string(numaNodeDictionaryCount[status]);
     std::cout << status << std::endl << std::flush;
     return status;
   } else {
@@ -48,6 +53,7 @@ DictionarySegment<T>::DictionarySegment(const std::shared_ptr<const pmr_vector<T
   } else {
     std::cout << "dictionary and its attributes on different Node" << std::endl << std::flush;
   }
+  printAllocations();
 
   Assert(_dictionary->size() < std::numeric_limits<ValueID::base_type>::max(), "Input segment too big");
 }
