@@ -19,7 +19,10 @@ class NumaMemoryResource : public boost::container::pmr::memory_resource {
   size_t _sum_allocated_bytes;  
  protected:
   NodeID _node_id;
-  size_t _lap_num_allocations; 
+  size_t _lap_num_allocations;
+
+  const size_t ALLOCATED_BYTES = 10ul * 1024*1024*1024; 
+  char * buffer;   
 };
 
 }  // namespace hyrise
