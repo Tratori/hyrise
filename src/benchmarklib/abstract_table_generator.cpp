@@ -264,14 +264,10 @@ void AbstractTableGenerator::generate_and_store() {
     jobs.reserve(chunk_count);
 
     for (auto chunk_id = ChunkID{0}; chunk_id < chunk_count; ++chunk_id) {
-      auto migrate_job = [&, chunk_id]() {
-        const auto& chunk = table->get_chunk(chunk_id);
-        chunk->migrate(&target_memory_resources->at(target_node_id));
-        // chunk->migrate(&target_memory_resources->at(target_node_id), column_allocations_mapping, table->column_names());
-      };
-      jobs.emplace_back(std::make_shared<JobTask>(migrate_job));
+      const auto& chunk = table->get_chunk(chunk_id);
+      chunk->migrate(&target_memory_resources->at(target_node_id));
+      // chunk->migrate(&target_memory_resources->at(target_node_id), column_allocations_mapping, table->column_names());
     }
-    Hyrise::get().scheduler()->schedule_and_wait_for_tasks(jobs);
     table_counter++;
     std::cout << " (" << timer.lap_formatted() << ")" << std::endl;
   }
