@@ -118,7 +118,7 @@ class NodeQueueScheduler : public AbstractScheduler {
   void wait_for_all_tasks() override;
 
   // Number of groups for _group_tasks
-  static constexpr auto NUM_GROUPS = 10;
+  static constexpr auto NUM_GROUPS = 80;
 
  protected:
   void _group_tasks(const std::vector<std::shared_ptr<AbstractTask>>& tasks) const override;
@@ -140,7 +140,10 @@ class NodeQueueScheduler : public AbstractScheduler {
   mutable std::vector<size_t> _num_scheduled_tasks_per_node;
   mutable std::vector<size_t> _num_scheduled_tasks_per_group;
 
-  size_t _group_number_per_node{30};
+  size_t _group_number_per_node{10};
+
+  bool _schedule_distant_node; 
+  bool _scheduling_optimizations; 
 
   mutable size_t _num_correctly_scheduled;
   mutable size_t _num_incorrectly_scheduled;

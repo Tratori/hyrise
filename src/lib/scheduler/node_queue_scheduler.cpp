@@ -25,6 +25,35 @@ NodeQueueScheduler::NodeQueueScheduler() {
   _num_incorrectly_scheduled = 0;
   _numa_aware_group = 0; 
   _numa_unaware_group = 0;
+
+  std::string scheduling_optimizations = "";
+  if(std::getenv("SCHEDULING_OPTIMIZATIONS")){
+    scheduling_optimizations = std::getenv("SCHEDULING_OPTIMIZATIONS");
+  }
+  std::cout << "SCHEDULING_OPTIMIZATIONS: " << scheduling_optimizations << std::endl; 
+  if(scheduling_optimizations == "on"){
+    _scheduling_optimizations = true;  
+  } else if (scheduling_optimizations == "off"){
+    _scheduling_optimizations = false;  
+  } else {
+    throw std::logic_error("Shouldn't end up here");
+  }
+
+  std::string schedule_distant_node = ""; 
+  if(std::getenv("SCHEDULE_DISTANT_NODE")){
+    schedule_distant_node = std::getenv("SCHEDULE_DISTANT_NODE");
+  }
+  std::cout << "SCHEDULE_DISTANT_NODE: " << schedule_distant_node << std::endl; 
+
+  if(schedule_distant_node == "on"){
+    _schedule_distant_node = true;
+  } else if (schedule_distant_node == "off"){
+    _schedule_distant_node = false;
+  } else {
+    throw std::logic_error("Shouldn't end up here...");
+  }
+
+
 }
 
 NodeQueueScheduler::~NodeQueueScheduler() {
@@ -162,7 +191,13 @@ void NodeQueueScheduler::schedule(std::shared_ptr<AbstractTask> task, SchedulePr
     return;
   }
 
-  const auto node_id_for_queue = determine_queue_id(task->node_id());
+  auto node_id_for_queue = NodeID{0};
+  if(_scheduling_optimizations){
+    node_id_for_queue = determine_queue_id(task->node_id()); 
+  } else {
+    node_id_for_queue = determine_queue_id(UNKNOWN_NODE_ID); 
+  } 
+
   DebugAssert((static_cast<size_t>(node_id_for_queue) < _queues.size()),
               "Node ID is not within range of available nodes. NodeID: " + std::to_string(node_id_for_queue) +
                   " queue size: " + std::to_string(_queues.size()));
@@ -185,7 +220,13 @@ NodeID NodeQueueScheduler::determine_queue_id(const NodeID preferred_node_id) co
   if (preferred_node_id != CURRENT_NODE_ID && preferred_node_id != INVALID_NODE_ID &&
       preferred_node_id != UNKNOWN_NODE_ID) {
     _num_correctly_scheduled++;
-    return preferred_node_id;
+
+
+    if(_schedule_distant_node){
+      return NodeID{(preferred_node_id + 4) % 8};
+    } else {
+      return preferred_node_id;
+    }
   }
   _num_incorrectly_scheduled++;
 
