@@ -5,6 +5,7 @@
 #include "hyrise.hpp"
 #include "import_export/binary/binary_parser.hpp"
 #include "import_export/binary/binary_writer.hpp"
+#include "memory/numa_memory_resource.hpp"
 #include "operators/sort.hpp"
 #include "operators/table_wrapper.hpp"
 #include "scheduler/job_task.hpp"
@@ -231,6 +232,69 @@ void AbstractTableGenerator::generate_and_store() {
     metrics.encoding_duration = timer.lap();
     std::cout << "- Encoding tables and generating pruning statistic done ("
               << format_duration(metrics.encoding_duration) << ")" << std::endl;
+  }
+
+  auto target_memory_resources = std::vector<NumaMemoryResource*>();
+
+  /**
+   * Relocate tables to optimize for numa.
+   */
+  if (_benchmark_config->relocate_numa) {
+    std::string relocate_granularity = "";
+    if (std::getenv("RELOCATE_GRANULARITY")) {
+      relocate_granularity = std::getenv("RELOCATE_GRANULARITY");
+    }
+    // we need to keep the MemoryResources alive until their memory is deallocated, for some reason.
+    auto num_nodes = static_cast<NodeID>(Hyrise::get().topology.nodes().size());
+    for (auto node_id = NodeID{0}; node_id < num_nodes; node_id++) {
+      const auto numa_memory_resource = new NumaMemoryResource(node_id);
+      target_memory_resources.push_back(numa_memory_resource);
+    }
+
+    if (relocate_granularity == "chunk") {
+      std::cout << "- Relocate data onto " << num_nodes << " nodes (round robin, chunk granularity)" << std::endl;
+      auto num_relocated_chunks = ChunkID{0};
+      for (auto& [table_name, table_info] : table_info_by_name) {
+        auto& table = table_info.table;
+        auto timer = Timer{};
+        auto chunk_count = table->chunk_count();
+        auto jobs = std::vector<std::shared_ptr<AbstractTask>>{};
+        jobs.reserve(chunk_count);
+        for (auto chunk_id = ChunkID{0}; chunk_id < chunk_count; ++chunk_id, ++num_relocated_chunks) {
+          auto target_node_id = NodeID{num_relocated_chunks % num_nodes};
+          auto migrate_job = [&, chunk_id, target_node_id]() {
+            const auto& chunk = table->get_chunk(chunk_id);
+            chunk->migrate(target_memory_resources.at(target_node_id));
+          };
+          jobs.emplace_back(std::make_shared<JobTask>(migrate_job));
+        }
+        Hyrise::get().scheduler()->schedule_and_wait_for_tasks(jobs);
+        std::cout << "-  Relocated " << table_name << " (" << timer.lap_formatted() << ")" << std::endl;
+      }
+    } else if (relocate_granularity == "table") {
+      std::cout << "- Relocate data onto " << num_nodes << " nodes (round robin, table granularity)" << std::endl;
+      auto num_relocated_tables = uint32_t{0};
+      for (auto& [table_name, table_info] : table_info_by_name) {
+        auto& table = table_info.table;
+        auto timer = Timer{};
+        auto chunk_count = table->chunk_count();
+        auto jobs = std::vector<std::shared_ptr<AbstractTask>>{};
+        jobs.reserve(chunk_count);
+        auto target_node_id = NodeID{num_relocated_tables % num_nodes};
+        for (auto chunk_id = ChunkID{0}; chunk_id < chunk_count; ++chunk_id) {
+          auto migrate_job = [&, chunk_id, target_node_id]() {
+            const auto& chunk = table->get_chunk(chunk_id);
+            chunk->migrate(target_memory_resources.at(target_node_id));
+          };
+          jobs.emplace_back(std::make_shared<JobTask>(migrate_job));
+        }
+        Hyrise::get().scheduler()->schedule_and_wait_for_tasks(jobs);
+        std::cout << "-  Relocated " << table_name << " (" << timer.lap_formatted() << ")" << std::endl;
+        num_relocated_tables++;
+      }
+    } else {
+      throw std::logic_error("Not supported");
+    }
   }
 
   /**
