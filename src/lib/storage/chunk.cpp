@@ -180,7 +180,7 @@ bool Chunk::references_exactly_one_table() const {
   return true;
 }
 
-void Chunk::migrate(boost::container::pmr::memory_resource* memory_source, NodeID node_id) {
+void Chunk::migrate(boost::container::pmr::memory_resource* memory_source) {
   // Migrating chunks with indexes is not implemented yet.
   if (!_indexes.empty()) {
     Fail("Cannot migrate Chunk with Indexes.");
@@ -190,7 +190,6 @@ void Chunk::migrate(boost::container::pmr::memory_resource* memory_source, NodeI
   Segments new_segments(_alloc);
   for (const auto& segment : _segments) {
     new_segments.push_back(segment->copy_using_allocator(_alloc));
-    new_segments.back()->set_node_location(node_id);
   }
   _segments = std::move(new_segments);
 }
