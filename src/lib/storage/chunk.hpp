@@ -124,11 +124,7 @@ class Chunk : private Noncopyable {
    * Migrates (copies) segments using memory_source. If the memory_source guarantees a
    * specific numa node location, set it, else ignore.
    */
-  void migrate(boost::container::pmr::memory_resource* memory_source, NodeID node_id = UNKNOWN_NODE_ID);
-
-  // TODO(anyone): For profiling purposes only... should be removed in the future
-  void migrate(NumaMemoryResource* memory_source, std::map<std::string, size_t>& column_allocations_mapping,
-               const std::vector<std::string>& column_names);
+  void migrate(boost::container::pmr::memory_resource* memory_source, NodeID node_id);
 
   bool references_exactly_one_table() const;
 
