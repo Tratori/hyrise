@@ -184,9 +184,6 @@ NodeID NodeQueueScheduler::determine_queue_id(const NodeID preferred_node_id) co
   // If we actually set a preferred_node_id, choose it as the queue id.
   if (preferred_node_id != CURRENT_NODE_ID && preferred_node_id != INVALID_NODE_ID &&
       preferred_node_id != UNKNOWN_NODE_ID) {
-    _num_correctly_scheduled++;
-
-
     if(_schedule_distant_node){
       return NodeID{(preferred_node_id + 4) % 8};
     } else {
